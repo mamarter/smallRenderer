@@ -3,24 +3,27 @@
 
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
+const TGAColor green   = TGAColor(0, 255, 0,   255);
 
-void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) { 
+
+void line(Vec2i t0, Vec2i t1, TGAImage &image, TGAColor color) {
+    
     bool steep = false; 
-    if (std::abs(x0-x1)<std::abs(y0-y1)) { 
-        std::swap(x0, y0); 
-        std::swap(x1, y1); 
+    if (std::abs(t0.x-t1.x)<std::abs(t0.y-t1.y)) {
+        std::swap(t0.x, t0.y);
+        std::swap(t1.x, t1.y);
         steep = true; 
     } 
-    if (x0>x1) { 
-        std::swap(x0, x1); 
-        std::swap(y0, y1); 
+    if (t0.x>t1.x) {
+        std::swap(t0.x, t1.x);
+        std::swap(t0.y, t1.y);
     } 
-    int dx = std::abs(x1-x0); 
-    int dy = std::abs(y1-y0); 
+    int dx = std::abs(t1.x-t0.x);
+    int dy = std::abs(t1.y-t0.y);
     float derror = dy/float(dx);
     float error = 0; 
-    int y = y0; 
-    for (int x=x0; x<=x1; x++) { 
+    int y = t0.y;
+    for (int x=t0.x; x<=t1.x; x++) {
         if (steep) { 
             image.set(y, x, color); 
         } else { 
@@ -28,12 +31,20 @@ void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color) {
         } 
         error += derror; 
         if (error>.5) { 
-            y += (y1>y0?1:-1); 
+            y += (t1.y>t0.y?1:-1);
             error -= 1.; 
         } 
     } 
 } 
 
+void fillTriangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage &image, TGAColor color)
+{
+    line(t0, t1, image, color);
+    line(t1, t2, image, color);
+    line(t2, t0, image, color);
+    
+    
+}
 
 void drawMesh(TGAImage& image, int width, int height)
 {
@@ -50,14 +61,14 @@ void drawMesh(TGAImage& image, int width, int height)
 		    int y0 = (v0.y+1.)*height/2.; 
 		    int x1 = (v1.x+1.)*width/2.; 
 		    int y1 = (v1.y+1.)*height/2.; 
-		    line(x0, y0, x1, y1, image, white); 
+		    line(Vec2i(x0, y0), Vec2i(x1, y1), image, white);
     	} 
 	}
 }
 
 int main(int argc, char** argv) {
-	int height = 800;
-	int width = 800;
+	int height = 200;
+	int width = 200;
 	if(argc == 3)
 	{
 		width = atoi(argv[1]);
@@ -65,8 +76,15 @@ int main(int argc, char** argv) {
 	}
 
 	TGAImage image(width, height, TGAImage::RGB);
-	
-	drawMesh(image, width, height);
+//	drawMesh(image, width, height);
+    
+    
+    Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)};
+    Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)};
+    Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
+    fillTriangle(t0[0], t0[1], t0[2], image, red);
+    fillTriangle(t1[0], t1[1], t1[2], image, white);
+    fillTriangle(t2[0], t2[1], t2[2], image, green);
 	
 	image.flip_vertically(); // origin at the left bottom corner of the image
 	image.write_tga_file("output.tga");

@@ -19,19 +19,20 @@ public:
 	float x, y, z;
 };
 
-class Vec2f
+class Vec2i
 {
 public:
-	Vec2f() : 
-	x(0.f),
-	y(0.f) {}
+	Vec2i() :
+	x(0),
+	y(0) {}
 
-	Vec2f(float x, float y) : 
+	Vec2i(int x, int y) :
 	x(x),
 	y(y){}
 
-	float x, y;
+	int x, y;
 };
+
 
 std::ostream& operator<<(std::ostream& out, const Vec3f& f);
 
