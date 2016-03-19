@@ -29,6 +29,13 @@ public:
 	Vec2i(int x, int y) :
 	x(x),
 	y(y){}
+	
+	friend bool operator==(const Vec2i& curr,const Vec2i& other) { return (curr.x==other.x) && (curr.y==other.y); }
+	friend bool operator!=(const Vec2i& curr,const Vec2i& other) { return !(curr==other); }
+
+	friend Vec2i operator-(Vec2i lhs, const Vec2i& rhs) { lhs.x-= rhs.x; lhs.y-=rhs.y; return lhs; }
+	friend Vec2i operator+(Vec2i lhs, const Vec2i& rhs) { lhs.x+= rhs.x; lhs.y+=rhs.y; return lhs; }
+	friend Vec2i operator*(Vec2i lhs, float rhs) { lhs.x*=rhs; lhs.y*=rhs; return lhs; }
 
 	int x, y;
 };

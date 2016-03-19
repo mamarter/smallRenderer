@@ -7,43 +7,64 @@ const TGAColor green   = TGAColor(0, 255, 0,   255);
 
 
 void line(Vec2i t0, Vec2i t1, TGAImage &image, TGAColor color) {
-    
-    bool steep = false; 
-    if (std::abs(t0.x-t1.x)<std::abs(t0.y-t1.y)) {
-        std::swap(t0.x, t0.y);
-        std::swap(t1.x, t1.y);
-        steep = true; 
-    } 
-    if (t0.x>t1.x) {
-        std::swap(t0.x, t1.x);
-        std::swap(t0.y, t1.y);
-    } 
-    int dx = std::abs(t1.x-t0.x);
-    int dy = std::abs(t1.y-t0.y);
-    float derror = dy/float(dx);
-    float error = 0; 
-    int y = t0.y;
-    for (int x=t0.x; x<=t1.x; x++) {
-        if (steep) { 
-            image.set(y, x, color); 
-        } else { 
-            image.set(x, y, color); 
-        } 
-        error += derror; 
-        if (error>.5) { 
-            y += (t1.y>t0.y?1:-1);
-            error -= 1.; 
-        } 
-    } 
-} 
+	
+	bool steep = false; 
+	if (std::abs(t0.x-t1.x)<std::abs(t0.y-t1.y)) {
+		std::swap(t0.x, t0.y);
+		std::swap(t1.x, t1.y);
+		steep = true; 
+	} 
+	if (t0.x>t1.x) {
+		std::swap(t0.x, t1.x);
+		std::swap(t0.y, t1.y);
+	} 
+	int dx = std::abs(t1.x-t0.x);
+	int dy = std::abs(t1.y-t0.y);
+	float derror = dy/float(dx);
+	float error = 0; 
+	int y = t0.y;
+	for (int x=t0.x; x<=t1.x; x++) {
+		if (steep) { 
+			image.set(y, x, color); 
+		} else { 
+			image.set(x, y, color); 
+		} 
+		error += derror; 
+		if (error>.5) { 
+			y += (t1.y>t0.y?1:-1);
+			error -= 1.; 
+		} 
+	} 
+}
+
+void drawHorizontalLines(Vec2i initial, Vec2i final, Vec2i initialLong, Vec2i finalLong, TGAImage &image, TGAColor color) {
+	
+	for (int h = initial.y; h <= final.y; h++) {
+		const int shorter = final.y - initial.y;
+		const int longer = finalLong.y - initialLong.y;
+		const float perc0 = std::abs(h-initialLong.y)/(float)longer;
+		const float perc1 = std::abs(h-initial.y)/(float)shorter;
+		
+		Vec2i p0 = initialLong + (finalLong-initialLong)*perc0;
+		Vec2i p1 = initial + (final-initial)*perc1;
+		if((p1.x - p0.x)<0) std::swap(p0, p1);
+		for (int x=p0.x; x<=p1.x; x++)
+		{
+			image.set(x, h, color);
+		}
+	}
+}
+
 
 void fillTriangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage &image, TGAColor color)
 {
-    line(t0, t1, image, color);
-    line(t1, t2, image, color);
-    line(t2, t0, image, color);
-    
-    
+	//bubble sort
+	if(t0.y > t1.y) std::swap(t0, t1);
+	if(t1.y > t2.y) std::swap(t2, t1);
+	if(t0.y > t1.y) std::swap(t0, t1);
+	
+	drawHorizontalLines(t0, t1, t0, t2, image, color);
+	drawHorizontalLines(t1, t2, t0, t2, image, color);
 }
 
 void drawMesh(TGAImage& image, int width, int height)
@@ -55,14 +76,14 @@ void drawMesh(TGAImage& image, int width, int height)
 	{
 		const std::vector<Vec3f>& face = newModel.GetFace(i);
 		for (int j=0; j<3; j++) { 
-		    Vec3f v0 = face[j]; 
-		    Vec3f v1 =face[(j+1)%3]; 
-		    int x0 = (v0.x+1.)*width/2.; 
-		    int y0 = (v0.y+1.)*height/2.; 
-		    int x1 = (v1.x+1.)*width/2.; 
-		    int y1 = (v1.y+1.)*height/2.; 
-		    line(Vec2i(x0, y0), Vec2i(x1, y1), image, white);
-    	} 
+			Vec3f v0 = face[j]; 
+			Vec3f v1 =face[(j+1)%3]; 
+			int x0 = (v0.x+1.)*width/2.; 
+			int y0 = (v0.y+1.)*height/2.; 
+			int x1 = (v1.x+1.)*width/2.; 
+			int y1 = (v1.y+1.)*height/2.; 
+			line(Vec2i(x0, y0), Vec2i(x1, y1), image, white);
+		} 
 	}
 }
 
@@ -77,14 +98,14 @@ int main(int argc, char** argv) {
 
 	TGAImage image(width, height, TGAImage::RGB);
 //	drawMesh(image, width, height);
-    
-    
-    Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)};
-    Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)};
-    Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
-    fillTriangle(t0[0], t0[1], t0[2], image, red);
-    fillTriangle(t1[0], t1[1], t1[2], image, white);
-    fillTriangle(t2[0], t2[1], t2[2], image, green);
+	
+	
+	Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)};
+	Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)};
+	Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
+	fillTriangle(t0[0], t0[1], t0[2], image, red);
+	fillTriangle(t1[0], t1[1], t1[2], image, white);
+	fillTriangle(t2[0], t2[1], t2[2], image, green);
 	
 	image.flip_vertically(); // origin at the left bottom corner of the image
 	image.write_tga_file("output.tga");
