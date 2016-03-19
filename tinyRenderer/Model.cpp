@@ -21,7 +21,7 @@ void Model::LoadModel(const std::string& modelPath)
 	while(getline(modelFile, line))
 	{
 		std::stringstream sstream(line);
-		std::cout<<line<<std::endl;
+//		std::cout<<line<<std::endl;
 		sstream >> type;
 
 		if(type == mRowTypes[ERowType::VERTEX])
@@ -57,9 +57,9 @@ void Model::CreateFace(std::stringstream& sstream)
 {
 	std::string vertex;
 	std::vector<Vec3f> verticesVector;
-    
-    for (int i=0; i<3; i++) {
-        sstream >> vertex;
+	
+	for (int i=0; i<3; i++) {
+		sstream >> vertex;
 		std::string::size_type prev = 0, current;
 		while((current = vertex.find("/", prev)) != std::string::npos ||
 				((current - prev) > 0) )
@@ -77,8 +77,8 @@ void Model::CreateFace(std::stringstream& sstream)
 			{
 				//normals
 			}
-            
-            prev = current == std::string::npos ? current : current + 1;
+			
+			prev = current == std::string::npos ? current : current + 1;
 		}
 	}
 

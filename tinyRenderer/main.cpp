@@ -1,6 +1,9 @@
 #include "tgaimage.h"
 #include "Model.h"
 
+#include <vector>
+#include <utility>
+
 const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 const TGAColor green   = TGAColor(0, 255, 0,   255);
@@ -42,6 +45,8 @@ void drawHorizontalLines(Vec2i initial, Vec2i final, Vec2i initialLong, Vec2i fi
 	for (int h = initial.y; h <= final.y; h++) {
 		const int shorter = final.y - initial.y;
 		const int longer = finalLong.y - initialLong.y;
+		if(shorter == 0 || longer == 0)
+			continue;
 		const float perc0 = std::abs(h-initialLong.y)/(float)longer;
 		const float perc1 = std::abs(h-initial.y)/(float)shorter;
 		
@@ -55,7 +60,6 @@ void drawHorizontalLines(Vec2i initial, Vec2i final, Vec2i initialLong, Vec2i fi
 	}
 }
 
-
 void fillTriangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage &image, TGAColor color)
 {
 	//bubble sort
@@ -67,29 +71,77 @@ void fillTriangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage &image, TGAColor color)
 	drawHorizontalLines(t1, t2, t0, t2, image, color);
 }
 
+std::pair<Vec2i, Vec2i> CreateAABB(const std::vector<Vec2i>& triangle, const TGAImage &image)
+{
+	std::pair<Vec2i, Vec2i> aabb(Vec2i(image.get_width()-1, image.get_height()-1), Vec2i(0, 0));
+	for(auto tri: triangle)
+	{
+		aabb.first.x = std::min(aabb.first.x, std::max(0, tri.x));
+		aabb.first.y = std::min(aabb.first.y, std::max(0, tri.y));
+		aabb.second.x = std::max(aabb.second.x, std::min(image.get_width()-1, tri.x));
+		aabb.second.y = std::max(aabb.second.y, std::min(image.get_height()-1, tri.y));
+	}
+	return aabb;
+}
+
+Vec3f GetBarycentricCoordinates(const Vec2i& point, const std::vector<Vec2i>& tri)
+{
+	const auto AB = tri[2] - tri[0];
+	const auto AC = tri[1] - tri[0];
+	const auto PA = tri[0] - point;
+	Vec3f v1 (AB.x, AC.x, PA.x);
+	Vec3f v2 (AB.y, AC.y, PA.y);
+
+	Vec3f res = v1 ^ v2;
+	if(std::abs(res[2]) < 1)
+	{
+		return Vec3f(-1,1,1);
+	}
+	return Vec3f(1.f-(res.x+res.y)/res.z, res.y/res.z, res.x/res.z);
+}
+
+void drawTriangle(const std::vector<Vec2i>& triangle, TGAImage &image, TGAColor color)
+{
+	auto aabb = CreateAABB(triangle, image);
+	for(int i = aabb.first.x; i <= aabb.second.x; i++)
+	{
+		for(int j = aabb.first.y; j <= aabb.second.y; j++)
+		{
+			Vec3f p(GetBarycentricCoordinates(Vec2i(i,j), triangle));
+			if(p.x >= 0.f && p.y >= 0.f && p.z >= 0.f)
+			{
+				image.set(i, j, color);
+			}
+		}
+	}
+}
+
 void drawMesh(TGAImage& image, int width, int height)
 {
 	Model newModel;
 	newModel.LoadModel("african_head.obj");
-
+	const Vec3f lightDir(0.f, 0.f, -1.f);
 	for(int i = 0; i < newModel.GetFacesSize(); i++)
 	{
+		// face in world coordinates
 		const std::vector<Vec3f>& face = newModel.GetFace(i);
-		for (int j=0; j<3; j++) { 
-			Vec3f v0 = face[j]; 
-			Vec3f v1 =face[(j+1)%3]; 
-			int x0 = (v0.x+1.)*width/2.; 
-			int y0 = (v0.y+1.)*height/2.; 
-			int x1 = (v1.x+1.)*width/2.; 
-			int y1 = (v1.y+1.)*height/2.; 
-			line(Vec2i(x0, y0), Vec2i(x1, y1), image, white);
-		} 
+		std::vector<Vec2i> screenCoord;
+		for (int j=0; j<3; j++)
+		{
+			screenCoord.push_back(Vec2i(width*(face[j].x+1.)/2.f,height*(face[j].y+1.)/2.f));
+		}
+		Vec3f normal = (face[2]-face[0]) ^ (face[1]-face[0]);
+		normal.normalize();
+
+		float intensity = normal * lightDir;
+		if(intensity > 0.f)
+			drawTriangle(screenCoord, image, TGAColor(intensity*255, intensity*255, intensity*255, 255));
 	}
 }
 
 int main(int argc, char** argv) {
-	int height = 200;
-	int width = 200;
+	int height = 800;
+	int width = 800;
 	if(argc == 3)
 	{
 		width = atoi(argv[1]);
@@ -97,15 +149,7 @@ int main(int argc, char** argv) {
 	}
 
 	TGAImage image(width, height, TGAImage::RGB);
-//	drawMesh(image, width, height);
-	
-	
-	Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)};
-	Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)};
-	Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)};
-	fillTriangle(t0[0], t0[1], t0[2], image, red);
-	fillTriangle(t1[0], t1[1], t1[2], image, white);
-	fillTriangle(t2[0], t2[1], t2[2], image, green);
+	drawMesh(image, width, height);
 	
 	image.flip_vertically(); // origin at the left bottom corner of the image
 	image.write_tga_file("output.tga");
