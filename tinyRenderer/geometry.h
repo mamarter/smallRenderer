@@ -86,4 +86,10 @@ public:
 using Vec3f = Vec3<float>;
 using Vec2i = Vec2<int>;
 
+struct Vertex
+{
+	Vec3f xyz;
+	Vec2i uv;
+};
+
 #endif /* Geometry_h */

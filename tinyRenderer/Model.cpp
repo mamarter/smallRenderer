@@ -13,6 +13,11 @@ Model::Model()
 
 }
 
+Model::Model(const std::string& modelPath)
+{
+	LoadModel(modelPath);
+}
+
 void Model::LoadModel(const std::string& modelPath)
 {
 	std::ifstream modelFile;
@@ -38,9 +43,9 @@ void Model::LoadModel(const std::string& modelPath)
 		}
 		else if(type == mRowTypes[ERowType::TEXTURE])
 		{
-			float x, y, z;
-			sstream >> x >> y >> z;
-			mTextureCoordinates.push_back(Vec3f(x, y, z));
+			float x, y;
+			sstream >> x >> y;
+			mTextureCoordinates.push_back(Vec2i(x, y));
 		}
 		else if(type == mRowTypes[ERowType::FACE])
 		{
@@ -55,31 +60,35 @@ void Model::LoadModel(const std::string& modelPath)
 
 void Model::CreateFace(std::stringstream& sstream)
 {
-	std::string vertex;
-	std::vector<Vec3f> verticesVector;
+	std::string line;
+	std::vector<Vertex> verticesVector;
 	
 	for (int i=0; i<3; i++) {
-		sstream >> vertex;
+		Vertex newVert;
+		sstream >> line;
 		std::string::size_type prev = 0, current;
-		while((current = vertex.find("/", prev)) != std::string::npos ||
+		while((current = line.find("/", prev)) != std::string::npos ||
 				((current - prev) > 0) )
 		{
-			int vIndex = stoi(vertex.substr(prev, current - prev));
+			int vIndex = stoi(line.substr(prev, current - prev));
 			if(prev == 0)
 			{
-				verticesVector.push_back(mVertices[vIndex-1]);
+				newVert.xyz = mVertices[vIndex-1];
 			}
 			else if(current == std::string::npos)
 			{
-				//text coord
+				//normals
 			}
 			else
 			{
-				//normals
+				//text coord
+				newVert.uv = mTextureCoordinates[vIndex-1];
 			}
 			
 			prev = current == std::string::npos ? current : current + 1;
 		}
+
+		verticesVector.push_back(newVert);
 	}
 
 	mFaces.push_back(verticesVector);
@@ -100,7 +109,7 @@ const Vec3f& Model::GetVertex(int index) const
 	return mVertices[index];
 }
 
-const std::vector<Vec3f>& Model::GetFace(int index) const
+const std::vector<Vertex>& Model::GetFace(int index) const
 {
 	return mFaces[index];
 }

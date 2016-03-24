@@ -8,6 +8,8 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 const TGAColor green   = TGAColor(0, 255, 0,   255);
 
+int height = 800;
+int width = 800;
 
 void line(Vec2i t0, Vec2i t1, TGAImage &image, TGAColor color) {
 	
@@ -71,24 +73,24 @@ void fillTriangle(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage &image, TGAColor color)
 	drawHorizontalLines(t1, t2, t0, t2, image, color);
 }
 
-std::pair<Vec2i, Vec2i> CreateAABB(const std::vector<Vec2i>& triangle, const TGAImage &image)
+std::pair<Vec2i, Vec2i> CreateAABB(const std::vector<Vec3f>& triangle, const TGAImage &image)
 {
 	std::pair<Vec2i, Vec2i> aabb(Vec2i(image.get_width()-1, image.get_height()-1), Vec2i(0, 0));
 	for(auto tri: triangle)
 	{
-		aabb.first.x = std::min(aabb.first.x, std::max(0, tri.x));
-		aabb.first.y = std::min(aabb.first.y, std::max(0, tri.y));
-		aabb.second.x = std::max(aabb.second.x, std::min(image.get_width()-1, tri.x));
-		aabb.second.y = std::max(aabb.second.y, std::min(image.get_height()-1, tri.y));
+		aabb.first.x = std::min(aabb.first.x, std::max(0, (int)tri.x));
+		aabb.first.y = std::min(aabb.first.y, std::max(0, (int)tri.y));
+		aabb.second.x = std::max(aabb.second.x, std::min(image.get_width()-1, (int)tri.x));
+		aabb.second.y = std::max(aabb.second.y, std::min(image.get_height()-1, (int)tri.y));
 	}
 	return aabb;
 }
 
-Vec3f GetBarycentricCoordinates(const Vec2i& point, const std::vector<Vec2i>& tri)
+Vec3f GetBarycentricCoordinates(const Vec2i& point, const std::vector<Vec3f>& tri)
 {
 	const auto AB = tri[2] - tri[0];
 	const auto AC = tri[1] - tri[0];
-	const auto PA = tri[0] - point;
+	const auto PA = tri[0] - Vec3f(point.x,point.y, 0.f);
 	Vec3f v1 (AB.x, AC.x, PA.x);
 	Vec3f v2 (AB.y, AC.y, PA.y);
 
@@ -100,8 +102,10 @@ Vec3f GetBarycentricCoordinates(const Vec2i& point, const std::vector<Vec2i>& tr
 	return Vec3f(1.f-(res.x+res.y)/res.z, res.y/res.z, res.x/res.z);
 }
 
-void drawTriangle(const std::vector<Vec2i>& triangle, TGAImage &image, TGAColor color)
+void drawTriangle(std::vector<Vec3f> triangle, std::vector<float> &zbuffer, TGAImage &image, const std::vector<Vec2i>& texCoord, float intensity)
 {
+	TGAImage diffuse;
+	diffuse.read_tga_file("african_head_diffuse.tga");
 	auto aabb = CreateAABB(triangle, image);
 	for(int i = aabb.first.x; i <= aabb.second.x; i++)
 	{
@@ -110,38 +114,75 @@ void drawTriangle(const std::vector<Vec2i>& triangle, TGAImage &image, TGAColor 
 			Vec3f p(GetBarycentricCoordinates(Vec2i(i,j), triangle));
 			if(p.x >= 0.f && p.y >= 0.f && p.z >= 0.f)
 			{
-				image.set(i, j, color);
+				// lerp for finding out z
+				int z = 0;
+				std::vector<unsigned char> color(3, 0);
+				int col = 0;
+				for (int k=0; k<3; k++)
+				{
+					z += triangle[k].z*p[k];
+					TGAColor vertexColor = diffuse.get(texCoord[k].u*diffuse.get_width(), texCoord[k].v*diffuse.get_height());
+//					for(int c=0; c<3; c++)
+//					{
+//						color[c] += vertexColor[c] * p[k] * intensity;
+//					}
+					col += vertexColor.val * p[k];
+				}
+				const auto pixelIndex = i+j*image.get_width();
+				if (zbuffer[pixelIndex] < z) {
+					zbuffer[pixelIndex] = z;
+//					image.set(i, j, TGAColor(color[2], color[1], color[0], 255));
+					image.set(i, j, TGAColor(col, 3));
+
+				}
 			}
 		}
 	}
 }
 
-void drawMesh(TGAImage& image, int width, int height)
+Vec3f world2screen(Vec3f v)
 {
-	Model newModel;
-	newModel.LoadModel("african_head.obj");
+	return Vec3f(int((v.x+1.)*width/2.+.5), int((v.y+1.)*height/2.+.5), v.z);
+}
+
+Vec2i scaleTexCoord(Vec2i v)
+{
+	return Vec2i(v.u*width, v.v*height);
+}
+
+void drawMesh(TGAImage& image, const Model& newModel)
+{
 	const Vec3f lightDir(0.f, 0.f, -1.f);
+	
+	std::vector<float> zbuffer(width*height, -std::numeric_limits<float>::max());
+
 	for(int i = 0; i < newModel.GetFacesSize(); i++)
 	{
 		// face in world coordinates
-		const std::vector<Vec3f>& face = newModel.GetFace(i);
-		std::vector<Vec2i> screenCoord;
+		const std::vector<Vertex>& face = newModel.GetFace(i);
+		std::vector<Vec3f> screenCoord;
+		std::vector<Vec2i> texCoord;
+
 		for (int j=0; j<3; j++)
 		{
-			screenCoord.push_back(Vec2i(width*(face[j].x+1.)/2.f,height*(face[j].y+1.)/2.f));
+			//from world to screen coordinates
+			screenCoord.push_back(world2screen(face[j].xyz));
+			texCoord.push_back(face[j].uv);
 		}
-		Vec3f normal = (face[2]-face[0]) ^ (face[1]-face[0]);
+		Vec3f normal = (face[2].xyz-face[0].xyz) ^ (face[1].xyz-face[0].xyz);
 		normal.normalize();
 
 		float intensity = normal * lightDir;
+
 		if(intensity > 0.f)
-			drawTriangle(screenCoord, image, TGAColor(intensity*255, intensity*255, intensity*255, 255));
+		{
+			drawTriangle(screenCoord, zbuffer, image, texCoord, intensity);
+		}
 	}
 }
 
 int main(int argc, char** argv) {
-	int height = 800;
-	int width = 800;
+
 	if(argc == 3)
 	{
 		width = atoi(argv[1]);
@@ -149,7 +190,8 @@ int main(int argc, char** argv) {
 	}
 
 	TGAImage image(width, height, TGAImage::RGB);
-	drawMesh(image, width, height);
+	Model newModel("african_head.obj");
+	drawMesh(image, newModel);
 	
 	image.flip_vertically(); // origin at the left bottom corner of the image
 	image.write_tga_file("output.tga");
