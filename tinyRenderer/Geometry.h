@@ -10,6 +10,8 @@
 #define Geometry_h
 
 #include <cmath>
+#include <iostream>
+#include <vector>
 
 template <class T>
 class Vec3
@@ -69,7 +71,7 @@ public:
 	
 	friend Vec2<T> operator-(Vec2<T> lhs, const Vec2<T>& rhs) { lhs.x-= rhs.x; lhs.y-=rhs.y; return lhs; }
 	friend Vec2<T> operator+(Vec2<T> lhs, const Vec2<T>& rhs) { lhs.x+= rhs.x; lhs.y+=rhs.y; return lhs; }
-	friend Vec2<T> operator*(Vec2<T> lhs, float rhs) { lhs.x*=rhs; lhs.y*=rhs; return lhs; }
+	friend Vec2<T> operator*(Vec2<T> lhs, T rhs) { lhs.x*=rhs; lhs.y*=rhs; return lhs; }
 	
 	T& operator[] (const int nIndex)
 	{
@@ -91,6 +93,43 @@ struct Vertex
 {
 	Vec3f xyz;
 	Vec2f uv;
+};
+
+class Matrix
+{
+public:
+	
+	Matrix(int rows, int cols);
+	Matrix(const std::vector<std::vector<float>>& matrix);
+	Matrix(const Matrix& matrix);
+	
+	inline int getRows() const { return mRows; }
+	inline int getCols() const { return mCols; }
+	
+ 	static Matrix identity(int dimensions);
+	
+	Matrix operator*(const Matrix& lhs);
+	
+	const std::vector<float>& operator[](const int nRow) const
+	{
+		return mMatrix[nRow];
+	}
+	
+	std::vector<float>& operator[](const int nRow)
+	{
+		return mMatrix[nRow];
+	}
+	
+	Matrix getTranspose();
+	Matrix getInverse();
+
+	friend std::ostream& operator<<(std::ostream& out, const Matrix& f);
+
+	
+private:
+	std::vector<std::vector<float>> mMatrix;
+	int mCols, mRows;
+	
 };
 
 #endif /* Geometry_h */
