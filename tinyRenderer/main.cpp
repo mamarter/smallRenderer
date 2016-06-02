@@ -102,7 +102,7 @@ Vec3f GetBarycentricCoordinates(const Vec2i& point, const std::vector<Vec3f>& tr
 	return Vec3f(1.f-(res.x+res.y)/res.z, res.y/res.z, res.x/res.z);
 }
 
-void drawTriangle(std::vector<Vec3f> triangle, std::vector<float> &zbuffer, TGAImage &image, const std::vector<Vec2i>& texCoord, float intensity)
+void drawTriangle(std::vector<Vec3f> triangle, std::vector<float> &zbuffer, TGAImage &image, const std::vector<Vec2f>& texCoord, float intensity)
 {
 	TGAImage diffuse;
 	diffuse.read_tga_file("african_head_diffuse.tga");
@@ -115,25 +115,20 @@ void drawTriangle(std::vector<Vec3f> triangle, std::vector<float> &zbuffer, TGAI
 			if(p.x >= 0.f && p.y >= 0.f && p.z >= 0.f)
 			{
 				// lerp for finding out z
-				int z = 0;
+				float z = 0.f;
 				std::vector<unsigned char> color(3, 0);
 				int col = 0;
 				for (int k=0; k<3; k++)
 				{
-					z += triangle[k].z*p[k];
+					z += triangle[k].z * p[k];
 					TGAColor vertexColor = diffuse.get(texCoord[k].u*diffuse.get_width(), texCoord[k].v*diffuse.get_height());
-//					for(int c=0; c<3; c++)
-//					{
-//						color[c] += vertexColor[c] * p[k] * intensity;
-//					}
 					col += vertexColor.val * p[k];
 				}
 				const auto pixelIndex = i+j*image.get_width();
-				if (zbuffer[pixelIndex] < z) {
+				if (zbuffer[pixelIndex] < z)
+				{
 					zbuffer[pixelIndex] = z;
-//					image.set(i, j, TGAColor(color[2], color[1], color[0], 255));
 					image.set(i, j, TGAColor(col, 3));
-
 				}
 			}
 		}
@@ -161,7 +156,7 @@ void drawMesh(TGAImage& image, const Model& newModel)
 		// face in world coordinates
 		const std::vector<Vertex>& face = newModel.GetFace(i);
 		std::vector<Vec3f> screenCoord;
-		std::vector<Vec2i> texCoord;
+		std::vector<Vec2f> texCoord;
 
 		for (int j=0; j<3; j++)
 		{

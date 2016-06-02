@@ -45,7 +45,7 @@ void Model::LoadModel(const std::string& modelPath)
 		{
 			float x, y;
 			sstream >> x >> y;
-			mTextureCoordinates.push_back(Vec2i(x, y));
+			mTextureCoordinates.push_back(Vec2f(x, y));
 		}
 		else if(type == mRowTypes[ERowType::FACE])
 		{

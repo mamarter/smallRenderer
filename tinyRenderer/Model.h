@@ -31,7 +31,7 @@ private:
 	void CreateFace(std::stringstream&);
 
 	std::vector<Vec3f> mVertices;
-	std::vector<Vec2i> mTextureCoordinates;
+	std::vector<Vec2f> mTextureCoordinates;
 	std::vector<Vec3f> mNormals;
 	std::vector<std::vector<Vertex>> mFaces;
 
