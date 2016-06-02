@@ -106,6 +106,7 @@ void drawTriangle(std::vector<Vec3f> triangle, std::vector<float> &zbuffer, TGAI
 {
 	TGAImage diffuse;
 	diffuse.read_tga_file("african_head_diffuse.tga");
+	diffuse.flip_vertically();
 	auto aabb = CreateAABB(triangle, image);
 	for(int i = aabb.first.x; i <= aabb.second.x; i++)
 	{
@@ -114,21 +115,24 @@ void drawTriangle(std::vector<Vec3f> triangle, std::vector<float> &zbuffer, TGAI
 			Vec3f p(GetBarycentricCoordinates(Vec2i(i,j), triangle));
 			if(p.x >= 0.f && p.y >= 0.f && p.z >= 0.f)
 			{
-				// lerp for finding out z
+				// lerp for finding out z and tex coordinate
 				float z = 0.f;
-				std::vector<unsigned char> color(3, 0);
-				int col = 0;
+				Vec2f tex;
 				for (int k=0; k<3; k++)
 				{
 					z += triangle[k].z * p[k];
-					TGAColor vertexColor = diffuse.get(texCoord[k].u*diffuse.get_width(), texCoord[k].v*diffuse.get_height());
-					col += vertexColor.val * p[k];
+					tex.u += texCoord[k].u * p[k];
+					tex.v += texCoord[k].v * p[k];
 				}
 				const auto pixelIndex = i+j*image.get_width();
 				if (zbuffer[pixelIndex] < z)
 				{
 					zbuffer[pixelIndex] = z;
-					image.set(i, j, TGAColor(col, 3));
+					TGAColor vertexColor = diffuse.get(tex.u*diffuse.get_width(), tex.v*diffuse.get_height());
+					vertexColor.r *= intensity;
+					vertexColor.g *= intensity;
+					vertexColor.b *= intensity;
+					image.set(i, j, vertexColor);
 				}
 			}
 		}
